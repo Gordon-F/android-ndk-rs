@@ -172,6 +172,8 @@ pub unsafe fn init(
         }
     });
 
+    let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+
     thread::spawn(move || {
         let looper = ThreadLooper::prepare();
         let foreign = looper.into_foreign();
@@ -183,9 +185,15 @@ pub unsafe fn init(
                 std::ptr::null_mut(),
             )
             .unwrap();
+        sender.send(()).unwrap();
         LOOPER = Some(foreign);
         main()
     });
+
+    // Block this function until the thread has created
+    // its thread looper and assigned it to the static
+    // LOOPER variable
+    let _looper_assigned = receiver.recv().unwrap();
 }
 
 unsafe extern "C" fn on_start(activity: *mut ANativeActivity) {
